@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مُخَطِّط المَهَام اليَوْمِي الهَادِئ | Calm Daily Task Planner</title>
+    <!-- Firebase v9 Compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <!-- Google Fonts: Tajawal (Arabic) & Inter (English) & Playfair Display (Cozy titles) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Dynamic Font Application */
+        :root {
+            --font-arabic: 'Tajawal', sans-serif;
+            --font-english: 'Inter', sans-serif;
+            
+            /* Cozy Warm Palette */
+            --bg-cozy: #FAF7F2;
+            --card-cozy: #FFFFFF;
+            --text-cozy: #3E3B35;
+            --text-muted: #878276;
+            --sage-cozy: #6B8C70;
+            --sage-light: #EFEFE9;
+            --sage-dark: #4A634F;
+            --border-cozy: #EBE6DC;
+        }
+        
+        html[dir="rtl"] {
+            font-family: var(--font-arabic);
+        }
+        
+        html[dir="ltr"] {
+            font-family: var(--font-english);
+        }
+
+        body {
+            background-color: var(--bg-cozy);
+            color: var(--text-cozy);
+        }
+
+        /* Smooth transitions */
+        .transition-all-300 {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom checkbox styling */
+        .custom-checkbox:checked + div {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        /* Soft pulsing keyframe for notifications & music active status */
+        @keyframes warm-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(107, 140, 112, 0.3); }
+            50% { transform: scale(1.02); box-shadow: 0 0 15px 8px rgba(107, 140, 112, 0.15); }
+        }
+        .pulse-cozy {
+            animation: warm-pulse 2.5s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbar for a cozy look */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-cozy);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #DCD6CB;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--sage-cozy);
+        }
+
+        /* Soft shadow overrides for pillowy card feel */
+        .cozy-shadow {
+            box-shadow: 0 10px 30px -5px rgba(120, 110, 95, 0.08), 0 4px 12px -2px rgba(120, 110, 95, 0.03);
+        }
+        .cozy-shadow-hover:hover {
+            box-shadow: 0 20px 35px -5px rgba(120, 110, 95, 0.12), 0 8px 16px -2px rgba(120, 110, 95, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col transition-all-300 pb-8 selection:bg-[#E2EBDD] selection:text-[#4A634F]">
+<!-- LOGIN OVERLAY -->
+    <div id="login-overlay" class="fixed inset-0 z-[9999] items-center justify-center" style="display:none;background:rgba(250,247,242,0.97);backdrop-filter:blur(8px);">
+      <div style="background:#fff;border-radius:24px;padding:2.5rem 2rem;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.08);text-align:center;">
+        <div style="width:56px;height:56px;background:#6B8C70;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;">🌿</div>
+        <h2 style="font-family:var(--font-arabic);font-size:1.3rem;font-weight:700;color:#3E3B35;margin-bottom:0.5rem;">أهلاً بك في مخططك</h2>
+        <p style="font-family:var(--font-arabic);font-size:0.85rem;color:#878276;margin-bottom:1.5rem;">أدخل اسمك للمتابعة</p>
+        <input id="login-name-input" type="text" placeholder="الاسم الكامل..." style="width:100%;padding:0.75rem 1rem;border:1.5px solid #EBE6DC;border-radius:12px;font-family:var(--font-arabic);font-size:1rem;color:#3E3B35;outline:none;margin-bottom:1rem;text-align:right;direction:rtl;" />
+        <div id="login-error" style="color:#c0392b;font-size:0.8rem;margin-bottom:0.75rem;display:none;font-family:var(--font-arabic);">يرجى إدخال اسمك أولاً</div>
+        <button onclick="handleLogin()" style="width:100%;background:#6B8C70;color:#fff;border:none;border-radius:12px;padding:0.8rem;font-family:var(--font-arabic);font-size:1rem;font-weight:700;cursor:pointer;">دخول →</button>
+        <p style="font-family:var(--font-arabic);font-size:0.75rem;color:#C5BDAF;margin-top:1rem;">اسمك يُستخدم فقط لتنظيم مهامك</p>
+      </div>
+    </div>
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel" class="fixed inset-0 z-[9998] hidden overflow-y-auto" style="background:#FAF7F2;">
+      <div style="max-width:900px;margin:0 auto;padding:2rem 1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
+          <h1 style="font-family:var(--font-arabic);font-size:1.5rem;font-weight:800;color:#3E3B35;">🗂 لوحة المدير</h1>
+          <div style="display:flex;gap:10px;">
+            <button onclick="downloadReport()" style="background:#6B8C70;color:#fff;border:none;border-radius:10px;padding:0.6rem 1.2rem;font-family:var(--font-arabic);font-size:0.85rem;font-weight:700;cursor:pointer;">⬇ تحميل تقرير CSV</button>
+            <button onclick="closeAdmin()" style="background:#EBE6DC;color:#3E3B35;border:none;border-radius:10px;padding:0.6rem 1.2rem;font-family:var(--font-arabic);font-size:0.85rem;font-weight:700;cursor:pointer;">✕ إغلاق</button>
+          </div>
+        </div>
+        <div id="admin-content" style="font-family:var(--font-arabic);">
+          <p style="color:#878276;text-align:center;padding:2rem;">جارٍ تحميل البيانات...</p>
+        </div>
+      </div>
+    </div>
+    
+
+    <!-- Main Container -->
+    <div class="flex-grow max-w-2xl w-full mx-auto px-4 py-6 md:py-10 flex flex-col">
+        
+        <!-- Top Navigation / App Header -->
+        <header class="mb-6">
+            <div class="flex justify-between items-center mb-6">
+                <!-- Branding -->
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 bg-[#6B8C70] rounded-2xl flex items-center justify-center text-white shadow-xs shadow-[#6B8C70]/20">
+                        <!-- Cozy Leaf icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 id="app-title" class="text-xl md:text-2xl font-extrabold tracking-tight text-[#3E3B35] font-serif">مُخَطِّط المَهَام اليَوْمِي الهَادِئ</h1>
+                        <p id="app-subtitle" class="text-xs text-[#878276]">مساحتك المريحة لتنظيم يومك بكل طمأنينة 🍃</p>
+                    </div>
+                </div>
+                
+                <!-- Top Right Actions -->
+                <div class="flex items-center gap-2">
+                    <!-- Test Alarm Sound Button -->
+                    <button onclick="testAlertSound()" id="btn-test" title="تجربة صوت التنبيه" class="p-2.5 rounded-xl bg-white border border-[#EBE6DC] hover:border-[#6B8C70] hover:bg-[#FAF7F2] text-[#3E3B35] hover:text-[#6B8C70] transition duration-200 flex items-center gap-1 text-xs font-medium cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                        <span data-i18n="testAlert">تجربة التنبيه</span>
+                    </button>
+
+                    <!-- Bilingual Language Toggle -->
+                    <button onclick="toggleLanguage()" class="p-2.5 px-3.5 rounded-xl bg-white border border-[#EBE6DC] hover:border-[#DCD6CB] text-[#3E3B35] text-xs font-semibold tracking-wider transition duration-200 cursor-pointer flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#878276]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h2m-4-3h9m-1 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span id="lang-label">English</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Digital Clock & System Status Banner -->
+            <div class="bg-white border border-[#EBE6DC] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cozy-shadow">
+                <!-- Time & Date Display -->
+                <div class="flex items-center gap-3">
+                    <div class="text-[#6B8C70] bg-[#FAF7F2] p-2.5 rounded-xl border border-[#EBE6DC]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div id="current-time-display" class="text-xl font-extrabold text-[#3E3B35] tracking-tight">--:--:--</div>
+                        <div id="current-date-display" class="text-xs text-[#878276] font-medium">--</div>
+                    </div>
+                </div>
+
+                <!-- Notification Permission State badge -->
+                <div id="notification-status-container" class="flex items-center gap-2">
+                    <!-- Dynamic badge -->
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body Content -->
+        <main class="flex-grow space-y-5">
+            
+            <!-- COZY SOUNDSCAPES & CALM MUSIC PLAYER DECK -->
+            <section class="bg-white border border-[#EBE6DC] rounded-3xl p-5 md:p-6 cozy-shadow relative overflow-hidden">
+                <!-- Ambient Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[#6B8C70] animate-pulse">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                            </svg>
+                        </span>
+                        <div>
+                            <h3 class="text-sm font-extrabold text-[#3E3B35]" data-i18n="ambientDeck">عازف الأجواء الهادئة</h3>
+                            <p class="text-[11px] text-[#878276]" data-i18n="ambientSubtitle">موسيقى تركيبية مريحة للمساعدة على التركيز والاسترخاء</p>
+                        </div>
+                    </div>
+
+                    <!-- Master Play/Pause Slider & Power -->
+                    <button onclick="toggleSoundscape()" id="btn-soundscape-toggle" class="px-4 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFEFE9] border border-[#EBE6DC] hover:border-[#6B8C70] text-xs font-bold text-[#3E3B35] transition duration-200 cursor-pointer flex items-center gap-1.5">
+                        <span class="relative flex h-2 w-2 shrink-0" id="soundscape-pulse-dot">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500" id="soundscape-dot-color"></span>
+                        </span>
+                        <span id="btn-soundscape-label" data-i18n="soundPlay">تشغيل الموسيقى</span>
+                    </button>
+                </div>
+
+                <!-- Atmospheric Selector Buttons -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                    <!-- Ambient Warm Drone -->
+                    <button onclick="selectSoundscape('drone')" id="sound-drone" class="sound-opt py-2.5 px-3 rounded-xl border border-[#EBE6DC] hover:border-[#6B8C70] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#3E3B35] transition-all duration-200 cursor-pointer flex flex-col items-center gap-1">
+                        <span class="text-lg">🧘</span>
+                        <span data-i18n="droneLabel">عزف دافئ</span>
+                    </button>
+                    <!-- Soft Rain -->
+                    <button onclick="selectSoundscape('rain')" id="sound-rain" class="sound-opt py-2.5 px-3 rounded-xl border border-[#EBE6DC] hover:border-[#6B8C70] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#3E3B35] transition-all duration-200 cursor-pointer flex flex-col items-center gap-1">
+                        <span class="text-lg">🌧️</span>
+                        <span data-i18n="rainLabel">مطر هادئ</span>
+                    </button>
+                    <!-- Ocean Waves -->
+                    <button onclick="selectSoundscape('waves')" id="sound-waves" class="sound-opt py-2.5 px-3 rounded-xl border border-[#EBE6DC] hover:border-[#6B8C70] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#3E3B35] transition-all duration-200 cursor-pointer flex flex-col items-center gap-1">
+                        <span class="text-lg">🌊</span>
+                        <span data-i18n="wavesLabel">أمواج البحر</span>
+                    </button>
+                    <!-- Cozy Campfire -->
+                    <button onclick="selectSoundscape('campfire')" id="sound-campfire" class="sound-opt py-2.5 px-3 rounded-xl border border-[#EBE6DC] hover:border-[#6B8C70] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#3E3B35] transition-all duration-200 cursor-pointer flex flex-col items-center gap-1">
+                        <span class="text-lg">🔥</span>
+                        <span data-i18n="campfireLabel">حطب يشتعل</span>
+                    </button>
+                </div>
+
+                <!-- Volume Slider -->
+                <div class="flex items-center gap-3 bg-[#FAF7F2] p-3 rounded-xl border border-[#EBE6DC]/60">
+                    <span class="text-[#878276]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    </span>
+                    <input type="range" id="music-volume" min="0" max="1" step="0.05" value="0.3" oninput="adjustVolume(this.value)"
+                           class="w-full accent-[#6B8C70] cursor-pointer bg-[#DCD6CB] h-1 rounded-lg appearance-none">
+                    <span id="volume-pct" class="text-[10px] font-bold text-[#878276] w-8 text-center">30%</span>
+                </div>
+            </section>
+
+            <!-- ===== DATE NAVIGATION BAR ===== -->
+            <section class="bg-white border border-[#EBE6DC] rounded-3xl p-4 md:p-5 cozy-shadow">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <!-- Day Navigator -->
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <!-- Previous Day -->
+                        <button onclick="navigateDay(-1)" title="اليوم السابق" class="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EBE6DC] hover:border-[#6B8C70] hover:bg-white text-[#6B8C70] transition duration-200 cursor-pointer shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+
+                        <!-- Date Display + Hidden Date Picker -->
+                        <div class="relative flex-grow sm:flex-grow-0">
+                            <button onclick="document.getElementById('date-picker').showPicker()" id="date-display-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#EBE6DC] hover:border-[#6B8C70] text-sm font-extrabold text-[#3E3B35] transition duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-[#6B8C70] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span id="selected-date-display">---</span>
+                            </button>
+                            <input type="date" id="date-picker" onchange="onDatePickerChange(this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+                        </div>
+
+                        <!-- Next Day -->
+                        <button onclick="navigateDay(1)" title="اليوم التالي" class="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EBE6DC] hover:border-[#6B8C70] hover:bg-white text-[#6B8C70] transition duration-200 cursor-pointer shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+
+                        <!-- Quick Today Button -->
+                        <button onclick="goToToday()" id="btn-today" class="py-2.5 px-4 rounded-xl bg-[#6B8C70] hover:bg-[#5A7A5F] text-white text-xs font-bold transition duration-200 cursor-pointer shrink-0 hidden" data-i18n="dateToday">
+                            اليوم
+                        </button>
+                    </div>
+
+                    <!-- Day Stats & Clear Day -->
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <!-- Day Task Count Badge -->
+                        <span id="day-task-count" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#878276] bg-[#FAF7F2] py-1.5 px-3.5 rounded-xl border border-[#EBE6DC]">
+                            <span id="count-day-total">0</span>
+                            <span data-i18n="dateTasksFor">المهام المجدولة</span>
+                        </span>
+
+                        <!-- Clear This Day -->
+                        <button onclick="handleClearDay()" id="btn-clear-day" class="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-[#EBE6DC] hover:border-rose-200 rounded-xl py-2 px-3.5 cursor-pointer transition duration-200 flex items-center gap-1 shrink-0" data-i18n="dateClearDay">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            مسح اليوم
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Notification Warning Banner -->
+            <div id="notification-banner" class="hidden bg-[#FAF3E3] border border-[#E8DFCE] rounded-2xl p-4 flex items-start gap-3 cozy-shadow">
+                <div class="text-[#A08040] p-1 bg-white rounded-lg shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.003 6.003 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                </div>
+                <div class="flex-grow space-y-1">
+                    <h4 class="text-xs font-bold text-[#665533]" data-i18n="notificationAlert">يرجى تفعيل الإشعارات لتلقي التنبيهات الصوتية والمرئية في الوقت المحدد.</h4>
+                    <button onclick="requestNotificationPermission()" class="text-xs text-[#A08040] hover:text-[#7A602E] font-bold underline decoration-2 cursor-pointer transition duration-200" data-i18n="enableNotifications">تفعيل التنبيهات الآن</button>
+                </div>
+            </div>
+
+            <!-- Add Task Form Card -->
+            <section class="bg-white border border-[#EBE6DC] rounded-3xl p-6 md:p-8 cozy-shadow relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#8BAE8E] to-[#5A7A5F]"></div>
+                
+                <h3 class="text-base font-extrabold text-[#3E3B35] mb-5 flex items-center gap-2" data-i18n="addTask">إضافة مهمة جديدة</h3>
+                
+                <form id="task-form" onsubmit="handleAddTask(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Task Title -->
+                        <div class="space-y-1">
+                            <label for="task-title" class="text-xs font-semibold text-[#878276] block" data-i18n="taskTitle">عنوان المهمة</label>
+                            <input type="text" id="task-title" required 
+                                   class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden text-[#3E3B35]"
+                                   placeholder="مثال: قراءة كتاب، رياضة...">
+                        </div>
+
+                        <!-- Alert Time -->
+                        <div class="space-y-1">
+                            <label for="task-time" class="text-xs font-semibold text-[#878276] block" data-i18n="taskTime">وقت التنبيه</label>
+                            <input type="time" id="task-time" required
+                                   class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden text-[#3E3B35]">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="space-y-1">
+                        <label for="task-desc" class="text-xs font-semibold text-[#878276] block" data-i18n="taskDesc">الوصف (اختياري)</label>
+                        <textarea id="task-desc" rows="2"
+                                  class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden resize-none text-[#3E3B35]"
+                                  placeholder="أضف تفاصيل إضافية للمهمة..."></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="w-full sm:w-auto bg-[#6B8C70] hover:bg-[#5A7A5F] active:bg-[#4A634F] text-white font-bold text-sm py-3.5 px-7 rounded-xl shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition duration-200 flex items-center justify-center gap-2 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span data-i18n="submitAdd">إضافة المهمة</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Tasks Section -->
+            <section class="space-y-4">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <!-- Filters Tab Deck -->
+                    <div class="bg-white border border-[#EBE6DC] rounded-xl p-1.5 flex gap-1 cozy-shadow">
+                        <button onclick="setFilter('all')" id="filter-all" class="filter-btn flex-grow sm:flex-none text-xs font-bold py-2 px-4 rounded-lg cursor-pointer transition-all duration-200 bg-[#EFEFE9] text-[#4A634F]">
+                            <span data-i18n="allTasks">الكل</span>
+                            <span id="count-all" class="ms-1.5 bg-white border border-[#EBE6DC] text-[#4A634F] px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </button>
+                        <button onclick="setFilter('pending')" id="filter-pending" class="filter-btn flex-grow sm:flex-none text-xs font-semibold py-2 px-4 rounded-lg text-[#878276] hover:text-[#3E3B35] hover:bg-[#FAF7F2] cursor-pointer transition-all duration-200">
+                            <span data-i18n="pendingTasks">المعلقة</span>
+                            <span id="count-pending" class="ms-1.5 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </button>
+                        <button onclick="setFilter('completed')" id="filter-completed" class="filter-btn flex-grow sm:flex-none text-xs font-semibold py-2 px-4 rounded-lg text-[#878276] hover:text-[#3E3B35] hover:bg-[#FAF7F2] cursor-pointer transition-all duration-200">
+                            <span data-i18n="completedTasks">المكتملة</span>
+                            <span id="count-completed" class="ms-1.5 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Clear All Button -->
+                    <button onclick="handleClearAll()" class="text-xs font-bold text-rose-700 hover:text-rose-800 bg-white hover:bg-rose-50 border border-[#EBE6DC] hover:border-rose-200 rounded-xl py-2.5 px-4.5 cursor-pointer transition duration-200 flex items-center justify-center gap-1.5 shadow-2xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span data-i18n="clearAll">مسح الكل</span>
+                    </button>
+                </div>
+
+                <!-- Live Search -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 start-0 ps-3.5 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#878276]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="search-tasks" oninput="handleSearch(this.value)"
+                           class="w-full bg-white border border-[#EBE6DC] focus:border-[#6B8C70] focus:ring-2 focus:ring-[#FAF7F2] rounded-xl ps-10 pe-4 py-3 text-xs font-bold transition duration-200 outline-hidden cozy-shadow text-[#3E3B35]"
+                           placeholder="البحث عن مهمة...">
+                </div>
+
+                <!-- Task List Container -->
+                <div id="tasks-list" class="space-y-3 min-h-[200px] flex flex-col">
+                    <!-- Task items injected via JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Cozy Footer -->
+        <footer class="mt-12 pt-6 border-t border-[#EBE6DC] text-center">
+            <p class="text-[11px] text-[#878276] font-medium">
+                &copy; <span id="current-year">2026</span> <span data-i18n="title">مُخَطِّط المَهَام اليَوْمِي الهَادِئ</span>. 
+                <span class="block sm:inline mt-1.5 sm:mt-0" data-i18n="footerSign">صُنع بمودة وهدوء لراحتك النفسية 🍃</span>
+            </p>
+        </footer>
+    </div>
+
+    <!-- EDIT TASK MODAL -->
+    <div id="edit-modal" class="fixed inset-0 bg-[#3E3B35]/40 backdrop-blur-xs flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl border border-[#EBE6DC] w-full max-w-md mx-4 overflow-hidden shadow-xl transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-4 border-b border-[#EBE6DC] flex justify-between items-center bg-[#FAF7F2]">
+                <h3 class="font-extrabold text-[#3E3B35] text-base" data-i18n="editTask">تعديل المهمة</h3>
+                <button onclick="closeEditModal()" class="p-1.5 rounded-lg hover:bg-[#EFEFE9] text-[#878276] hover:text-[#3E3B35] cursor-pointer transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="edit-form" onsubmit="handleUpdateTask(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-task-id">
+                <div class="space-y-1">
+                    <label for="edit-task-title" class="text-xs font-semibold text-[#878276] block" data-i18n="taskTitle">عنوان المهمة</label>
+                    <input type="text" id="edit-task-title" required 
+                           class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden text-[#3E3B35]">
+                </div>
+                <div class="space-y-1">
+                    <label for="edit-task-time" class="text-xs font-semibold text-[#878276] block" data-i18n="taskTime">وقت التنبيه</label>
+                    <input type="time" id="edit-task-time" required
+                           class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden text-[#3E3B35]">
+                </div>
+                <div class="space-y-1">
+                    <label for="edit-task-desc" class="text-xs font-semibold text-[#878276] block" data-i18n="taskDesc">الوصف (اختياري)</label>
+                    <textarea id="edit-task-desc" rows="3"
+                              class="w-full bg-[#FAF7F2] border border-[#EBE6DC] focus:border-[#6B8C70] focus:bg-white focus:ring-3 focus:ring-[#FAF7F2] rounded-xl px-4 py-3 text-sm transition duration-200 outline-hidden resize-none text-[#3E3B35]"></textarea>
+                </div>
+                <div class="flex items-center gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 py-3 px-4 border border-[#EBE6DC] hover:bg-[#FAF7F2] text-[#878276] font-bold text-sm rounded-xl cursor-pointer transition duration-200" data-i18n="cancel">إلغاء</button>
+                    <button type="submit" class="flex-1 py-3 px-4 bg-[#6B8C70] hover:bg-[#5A7A5F] text-white font-bold text-sm rounded-xl cursor-pointer transition duration-200" data-i18n="save">حفظ التعديلات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ALARM MODAL OVERLAY -->
+    <div id="alarm-modal" class="fixed inset-0 bg-[#3E3B35]/70 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-md mx-4 overflow-hidden shadow-2xl border border-[#EBE6DC] transform scale-90 transition-transform duration-300 pulse-cozy">
+            <div class="h-2 bg-gradient-to-r from-[#8BAE8E] via-[#6B8C70] to-[#4A634F]"></div>
+            
+            <div class="p-8 flex flex-col items-center text-center space-y-6">
+                <!-- Glowing Clock Icon -->
+                <div class="w-16 h-16 bg-[#FAF7F2] border border-[#EBE6DC] rounded-full flex items-center justify-center text-[#6B8C70] relative">
+                    <div class="absolute inset-0 rounded-full bg-[#6B8C70] animate-ping opacity-25"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.003 6.003 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                </div>
+
+                <!-- Time Badge & Subtitles -->
+                <div class="space-y-1">
+                    <span id="alarm-time-badge" class="bg-[#EFEFE9] text-[#4A634F] text-xs font-extrabold py-1.5 px-4 rounded-full border border-[#EBE6DC]">--:--</span>
+                    <h3 class="text-lg font-extrabold text-[#3E3B35] mt-3" data-i18n="alertTitle">تذكير بمهمة!</h3>
+                </div>
+
+                <!-- Task Detail Block -->
+                <div class="bg-[#FAF7F2] border border-[#EBE6DC] rounded-2xl p-5 w-full space-y-1">
+                    <h4 id="alarm-task-title" class="font-extrabold text-base text-[#3E3B35] leading-snug">...</h4>
+                    <p id="alarm-task-desc" class="text-xs text-[#878276] leading-relaxed break-words max-h-24 overflow-y-auto">...</p>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex flex-col sm:flex-row gap-3 w-full">
+                    <button id="btn-alarm-complete" class="flex-1 py-3 px-4 bg-[#6B8C70] hover:bg-[#5A7A5F] active:bg-[#4A634F] text-white font-bold text-sm rounded-xl cursor-pointer shadow-xs hover:shadow-md transition duration-200 flex items-center justify-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span data-i18n="markDone">تم إنجازها!</span>
+                    </button>
+                    <button id="btn-alarm-dismiss" class="flex-1 py-3 px-4 bg-[#FAF7F2] hover:bg-[#EFEFE9] text-[#878276] hover:text-[#3E3B35] font-bold text-sm rounded-xl cursor-pointer transition duration-200 border border-[#EBE6DC]">
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANSIENT TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 left-5 right-5 md:left-auto md:right-5 flex flex-col gap-2.5 z-50 pointer-events-none"></div>
+
+    <!-- CORE SCRIPT -->
+    <script>
+        // Translations mapping for Arabic (RTL) and English (LTR)
+        const translations = {
+            ar: {
+                title: "مُخَطِّط المَهَام اليَوْمِي الهَادِئ",
+                subtitle: "مساحتك المريحة لتنظيم يومك بكل طمأنينة 🍃",
+                addTask: "إضافة مهمة جديدة",
+                taskTitle: "عنوان المهمة",
+                taskTitlePlaceholder: "مثال: قراءة كتاب، رياضة...",
+                taskDesc: "الوصف (اختياري)",
+                taskDescPlaceholder: "أضف تفاصيل إضافية للمهمة...",
+                taskTime: "وقت التنبيه",
+                submitAdd: "إضافة المهمة",
+                submitUpdate: "تحديث المهمة",
+                allTasks: "الكل",
+                pendingTasks: "المعلقة",
+                completedTasks: "المكتملة",
+                clearAll: "مسح الكل",
+                emptyStateTitle: "يومك هادئ ومريح! 🕊️",
+                emptyStateDesc: "لا توجد مهام مجدولة حالياً. أضف مهمتك لتستقبل يومك بهدوء وتركيز.",
+                notificationAlert: "يرجى تفعيل الإشعارات لتلقي التنبيهات الصوتية والمرئية في الوقت المحدد.",
+                enableNotifications: "تفعيل التنبيهات الآن",
+                notificationsActive: "نظام التنبيهات نشط",
+                testAlert: "تجربة التنبيه",
+                deleteConfirm: "هل أنت متأكد من رغبتك في حذف هذه المهمة؟",
+                clearAllConfirm: "هل أنت متأكد من رغبتك في حذف جميع المهام؟",
+                alertTitle: "تذكير بمهمة!",
+                alertBody: "حان الآن موعد: {title}",
+                toastAdded: "تمت إضافة المهمة بنجاح!",
+                toastDeleted: "تم حذف المهمة.",
+                toastCleared: "تم مسح جميع المهام.",
+                toastUpdated: "تم تحديث المهمة بنجاح.",
+                toastStatusChanged: "تم تحديث حالة المهمة.",
+                today: "اليوم",
+                now: "الآن",
+                am: "ص",
+                pm: "م",
+                editTask: "تعديل المهمة",
+                cancel: "إلغاء",
+                save: "حفظ التعديلات",
+                dismiss: "إغلاق",
+                markDone: "تم إنجازها!",
+                notificationsDefault: "تفعيل الإشعارات",
+                notificationsDenied: "محجوبة",
+                searchPlaceholder: "البحث عن مهمة...",
+                noResultsTitle: "لا توجد نتائج مطابقة 🔍",
+                noResultsDesc: "يرجى التحقق من العنوان أو الوصف وإعادة المحاولة.",
+                ambientDeck: "عازف الأجواء الهادئة",
+                ambientSubtitle: "موسيقى مريحة ومؤثرات طبيعية مولدة تلقائياً لتصفية الذهن",
+                soundPlay: "تشغيل الموسيقى",
+                soundPause: "إيقاف الموسيقى",
+                droneLabel: "عزف دافئ",
+                rainLabel: "مطر هادئ",
+                wavesLabel: "أمواج البحر",
+                campfireLabel: "حطب يشتعل",
+                footerSign: "صُنع بمودة وهدوء لراحتك النفسية 🍃",
+                countdownNow: "الآن",
+                countdownMinAgo: "منذ دقيقة",
+                countdownMinsAgo: "منذ {n} دقائق",
+                countdownHourAgo: "منذ ساعة",
+                countdownHoursAgo: "منذ {n} ساعات",
+                countdownInMin: "بعد دقيقة",
+                countdownInMins: "بعد {n} دقائق",
+                countdownInHour: "بعد ساعة",
+                countdownInHours: "بعد {n} ساعات",
+                dateToday: "اليوم",
+                dateClearDay: "مسح مهام هذا اليوم",
+                dateClearDayConfirm: "هل أنت متأكد من رغبتك في حذف جميع مهام هذا اليوم؟",
+                dateTasksFor: "المهام المجدولة",
+                dateNoTasks: "لا توجد مهام لهذا اليوم بعد",
+                datePrevDay: "اليوم السابق",
+                dateNextDay: "اليوم التالي",
+                datePickDate: "اختيار التاريخ"
+            },
+            en: {
+                title: "Calm Daily Task Planner",
+                subtitle: "Your cozy space to organize your day in peace 🍃",
+                addTask: "Add New Task",
+                taskTitle: "Task Title",
+                taskTitlePlaceholder: "e.g., Read a book, Exercise...",
+                taskDesc: "Description (optional)",
+                taskDescPlaceholder: "Add extra details here...",
+                taskTime: "Alert Time",
+                submitAdd: "Add Task",
+                submitUpdate: "Update Task",
+                allTasks: "All",
+                pendingTasks: "Pending",
+                completedTasks: "Completed",
+                clearAll: "Clear All",
+                emptyStateTitle: "Your day is calm and cozy! 🕊️",
+                emptyStateDesc: "No tasks scheduled yet. Add a task to approach your day with clear intent.",
+                notificationAlert: "Please enable notifications to receive sound and visual alerts on time.",
+                enableNotifications: "Enable Notifications",
+                notificationsActive: "Notifications active",
+                testAlert: "Test Alert",
+                deleteConfirm: "Are you sure you want to delete this task?",
+                clearAllConfirm: "Are you sure you want to clear all tasks?",
+                alertTitle: "Task Reminder!",
+                alertBody: "It's time for: {title}",
+                toastAdded: "Task added successfully!",
+                toastDeleted: "Task deleted.",
+                toastCleared: "All tasks cleared.",
+                toastUpdated: "Task updated successfully.",
+                toastStatusChanged: "Task status updated.",
+                today: "Today",
+                now: "Now",
+                am: "AM",
+                pm: "PM",
+                editTask: "Edit Task",
+                cancel: "Cancel",
+                save: "Save Changes",
+                dismiss: "Dismiss",
+                markDone: "Mark Done!",
+                notificationsDefault: "Enable Notifications",
+                notificationsDenied: "Blocked",
+                searchPlaceholder: "Search tasks...",
+                noResultsTitle: "No matching results 🔍",
+                noResultsDesc: "Please check the spelling or details and try again.",
+                ambientDeck: "Cozy Soundscape Player",
+                ambientSubtitle: "Generative ambient soundscapes to calm your mind and aid focus",
+                soundPlay: "Play Soundscape",
+                soundPause: "Pause Soundscape",
+                droneLabel: "Warm Drone",
+                rainLabel: "Soft Rain",
+                wavesLabel: "Ocean Waves",
+                campfireLabel: "Campfire",
+                footerSign: "Made with warmth and care for your mindfulness 🍃",
+                countdownNow: "Now",
+                countdownMinAgo: "1 min ago",
+                countdownMinsAgo: "{n} mins ago",
+                countdownHourAgo: "1 hour ago",
+                countdownHoursAgo: "{n} hours ago",
+                countdownInMin: "in 1 min",
+                countdownInMins: "in {n} mins",
+                countdownInHour: "in 1 hour",
+                countdownInHours: "in {n} hours",
+                dateToday: "Today",
+                dateClearDay: "Clear this day",
+                dateClearDayConfirm: "Are you sure you want to delete all tasks for this day?",
+                dateTasksFor: "Scheduled tasks",
+                dateNoTasks: "No tasks for this day yet",
+                datePrevDay: "Previous day",
+                dateNextDay: "Next day",
+                datePickDate: "Choose date"
+            }
+        };
+
+        // Application State
+        let tasks = [];
+        let currentLanguage = 'ar';
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let selectedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        // Advanced Soundscape Synthesizer State
+        let audioCtx = null;
+        let isPlayingSoundscape = false;
+        let activeSoundscape = 'drone'; // 'drone', 'rain', 'waves', 'campfire'
+        let masterVolumeNode = null;
+
+        // Node references for ongoing procedural noise loopers
+        let noiseSourceNode = null;
+        let noiseFilterNode = null;
+        let droneOscillators = [];
+        let droneGains = [];
+        let soundscapeIntervalId = null;
+
+        // Setup Current Year in Footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // Page Initialization
+        function initApp() {
+            if (appInitialized) return;
+            appInitialized = true;
+            // 1. Restore language preference
+            const savedLanguage = localStorage.getItem('planner_lang');
+            if (savedLanguage && ['ar', 'en'].includes(savedLanguage)) {
+                currentLanguage = savedLanguage;
+            } else {
+                currentLanguage = 'ar';
+            }
+
+            // 2. Tasks loaded from Firebase — skip localStorage tasks
+            tasks = [];
+
+            // 2.5 Restore selected date from localStorage, default to today
+            const savedDate = localStorage.getItem('planner_selected_date');
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (savedDate) {
+                selectedDate = savedDate;
+            } else {
+                selectedDate = todayStr;
+            }
+
+            // 3. Request notification access & update visual badge
+            checkAndRequestNotificationPermission(true);
+
+            // 4. Populate default form alert time (now + 30m)
+            const timeInput = document.getElementById('task-time');
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 30);
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
+
+            // 5. Apply Theme / Layout directions
+            applyLanguageUI();
+            
+            // 6. Launch real-time clock and checking mechanism
+            setInterval(updateClockAndScheduleCheck, 1000);
+            updateClockAndScheduleCheck();
+
+            // 7. Set visual active state for default soundscape button
+            updateSoundscapeSelectionUI();
+
+            // 8. Sync date navigation UI
+            updateDateDisplay();
+        }
+
+        // Language Controllers & Translation Engine
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('planner_lang', currentLanguage);
+            
+            const html = document.documentElement;
+            html.setAttribute('lang', currentLanguage);
+            html.setAttribute('dir', currentLanguage === 'ar' ? 'rtl' : 'ltr');
+            
+            applyLanguageUI();
+        }
+
+        function applyLanguageUI() {
+            const dict = translations[currentLanguage];
+            
+            // Update header Branding & placeholder configurations
+            document.getElementById('app-title').innerText = dict.title;
+            document.getElementById('app-subtitle').innerText = dict.subtitle;
+            document.getElementById('lang-label').innerText = currentLanguage === 'ar' ? 'English' : 'عربي';
+            document.getElementById('search-tasks').placeholder = dict.searchPlaceholder;
+
+            // Handle general translated elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.innerText = dict[key];
+                }
+            });
+
+            // Update Form Field placeholders
+            document.getElementById('task-title').placeholder = dict.taskTitlePlaceholder;
+            document.getElementById('task-desc').placeholder = dict.taskDescPlaceholder;
+
+            // Sync play/pause button state text
+            const pulseDot = document.getElementById('soundscape-pulse-dot');
+            const labelSpan = document.getElementById('btn-soundscape-label');
+            if (isPlayingSoundscape) {
+                labelSpan.innerText = dict.soundPause;
+            } else {
+                labelSpan.innerText = dict.soundPlay;
+            }
+
+            // Sync badge alerts & render task components
+            checkAndRequestNotificationPermission(false);
+            updateDateDisplay();
+            renderTasks();
+        }
+
+        // Push Notifications Settings
+        function checkAndRequestNotificationPermission(isOnLoad = false) {
+            const banner = document.getElementById('notification-banner');
+            const container = document.getElementById('notification-status-container');
+            
+            if (!('Notification' in window)) {
+                if (banner) banner.style.display = 'none';
+                if (container) container.innerHTML = '';
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                if (banner) banner.classList.add('hidden');
+                updateNotificationBadge('granted');
+            } else if (Notification.permission === 'denied') {
+                if (banner) banner.classList.remove('hidden');
+                updateNotificationBadge('denied');
+            } else {
+                if (isOnLoad) {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            if (banner) banner.classList.add('hidden');
+                        } else {
+                            if (banner) banner.classList.remove('hidden');
+                        }
+                        updateNotificationBadge(permission);
+                    });
+                } else {
+                    if (banner) banner.classList.remove('hidden');
+                    updateNotificationBadge('default');
+                }
+            }
+        }
+
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) return;
+            
+            Notification.requestPermission().then(permission => {
+                const banner = document.getElementById('notification-banner');
+                if (permission === 'granted') {
+                    if (banner) banner.classList.add('hidden');
+                    showToast(translations[currentLanguage].notificationsActive, 'success');
+                } else if (permission === 'denied') {
+                    if (banner) banner.classList.remove('hidden');
+                }
+                updateNotificationBadge(permission);
+            });
+        }
+
+        function updateNotificationBadge(status) {
+            const container = document.getElementById('notification-status-container');
+            if (!container) return;
+
+            let badgeHTML = '';
+            const dict = translations[currentLanguage];
+
+            if (status === 'granted') {
+                badgeHTML = `
+                    <span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-bold bg-[#FAF7F2] text-[#4A634F] border border-[#EBE6DC] shadow-2xs">
+                        <span class="w-2 h-2 rounded-full bg-[#6B8C70] animate-pulse"></span>
+                        ${dict.notificationsActive}
+                    </span>
+                `;
+            } else if (status === 'denied') {
+                badgeHTML = `
+                    <button onclick="requestNotificationPermission()" class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-100 hover:bg-rose-100/60 transition duration-200 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        ${dict.notificationsDenied}
+                    </button>
+                `;
+            } else {
+                badgeHTML = `
+                    <button onclick="requestNotificationPermission()" class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-bold bg-amber-50 text-[#7A602E] border border-amber-100 hover:bg-amber-100/60 transition duration-200 cursor-pointer animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        ${dict.notificationsDefault}
+                    </button>
+                `;
+            }
+            container.innerHTML = badgeHTML;
+        }
+
+        // Notification Toast Prompts
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let borderTheme = 'border-[#EBE6DC] bg-white';
+            let textTheme = 'text-[#3E3B35]';
+            let iconColor = 'text-[#6B8C70]';
+            let iconSVG = `
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            `;
+
+            if (type === 'error') {
+                borderTheme = 'border-rose-100 bg-rose-50';
+                textTheme = 'text-rose-950';
+                iconColor = 'text-rose-500';
+                iconSVG = `
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                `;
+            } else if (type === 'info') {
+                borderTheme = 'border-sky-100 bg-sky-50';
+                textTheme = 'text-sky-950';
+                iconColor = 'text-sky-500';
+                iconSVG = `
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                `;
+            }
+
+            toast.className = `flex items-center gap-3 p-4 rounded-2xl border shadow-lg pointer-events-auto transition-all duration-300 transform translate-y-5 opacity-0 max-w-sm w-full ${borderTheme} ${textTheme}`;
+            toast.innerHTML = `
+                <div class="${iconColor} shrink-0">
+                    ${iconSVG}
+                </div>
+                <p class="text-xs font-bold flex-grow leading-snug">${message}</p>
+                <button onclick="this.parentElement.remove()" class="text-[#878276] hover:text-[#3E3B35] cursor-pointer p-0.5 rounded-lg hover:bg-[#EFEFE9]">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Procedural Ambient Soundscape Engine (Web Audio API)
+        // Generates organic, relaxing ambient music procedurally with absolute offline stability
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterVolumeNode = audioCtx.createGain();
+                masterVolumeNode.gain.setValueAtTime(parseFloat(document.getElementById('music-volume').value), audioCtx.currentTime);
+                masterVolumeNode.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSoundscape() {
+            initAudioContext();
+
+            const dot = document.getElementById('soundscape-dot-color');
+            const labelSpan = document.getElementById('btn-soundscape-label');
+            const dict = translations[currentLanguage];
+
+            if (isPlayingSoundscape) {
+                // Stop current playback
+                stopSoundscapeNodes();
+                isPlayingSoundscape = false;
+                dot.className = "relative inline-flex rounded-full h-2 w-2 bg-rose-500";
+                labelSpan.innerText = dict.soundPlay;
+                showToast(currentLanguage === 'ar' ? 'تم إيقاف الأجواء الهادئة ⏸️' : 'Soundscape paused ⏸️', 'info');
+            } else {
+                // Start current soundscape type
+                isPlayingSoundscape = true;
+                dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500 animate-pulse";
+                labelSpan.innerText = dict.soundPause;
+                startSoundscapeNodes();
+                showToast(currentLanguage === 'ar' ? 'بدء عزف الأجواء الهادئة 🎧' : 'Calm soundscape started 🎧', 'success');
+            }
+        }
+
+        function selectSoundscape(type) {
+            activeSoundscape = type;
+            updateSoundscapeSelectionUI();
+
+            if (isPlayingSoundscape) {
+                // Hot reload the audio synthesizers smoothly
+                stopSoundscapeNodes();
+                initAudioContext();
+                startSoundscapeNodes();
+            }
+        }
+
+        function updateSoundscapeSelectionUI() {
+            document.querySelectorAll('.sound-opt').forEach(btn => {
+                btn.className = "sound-opt py-2.5 px-3 rounded-xl border border-[#EBE6DC] hover:border-[#6B8C70] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#3E3B35] transition-all duration-200 cursor-pointer flex flex-col items-center gap-1";
+            });
+
+            const selectedBtn = document.getElementById(`sound-${activeSoundscape}`);
+            if (selectedBtn) {
+                selectedBtn.className = "sound-opt py-2.5 px-3 rounded-xl border-[#6B8C70] bg-[#EFEFE9] text-[#4A634F] text-xs font-extrabold transition-all duration-200 cursor-pointer flex flex-col items-center gap-1 ring-2 ring-[#E2EBDD]";
+            }
+        }
+
+        function adjustVolume(val) {
+            const pct = Math.round(val * 100);
+            document.getElementById('volume-pct').textContent = `${pct}%`;
+            if (masterVolumeNode && audioCtx) {
+                masterVolumeNode.gain.linearRampToValueAtTime(parseFloat(val), audioCtx.currentTime + 0.1);
+            }
+        }
+
+        // Stop synthesizers and release oscillator memory safely
+        function stopSoundscapeNodes() {
+            if (soundscapeIntervalId) {
+                clearInterval(soundscapeIntervalId);
+                soundscapeIntervalId = null;
+            }
+
+            if (noiseSourceNode) {
+                try { noiseSourceNode.stop(); } catch(e){}
+                noiseSourceNode = null;
+            }
+            if (noiseFilterNode) {
+                noiseFilterNode = null;
+            }
+
+            droneOscillators.forEach(osc => {
+                try { osc.stop(); } catch(e){}
+            });
+            droneOscillators = [];
+            droneGains = [];
+        }
+
+        // Launch procedurally-designed synthesizers
+        function startSoundscapeNodes() {
+            if (!audioCtx || !isPlayingSoundscape) return;
+
+            const now = audioCtx.currentTime;
+
+            if (activeSoundscape === 'drone') {
+                // WARM AMBIENT DRONE: 4 detuned oscillators creating a major chord with floating modulators
+                // Cozy chords: F2 (87.31Hz), C3 (130.81Hz), F3 (174.61Hz), A3 (220.00Hz), C4 (261.63Hz)
+                const freqs = [87.31, 130.81, 174.61, 220.00, 261.63];
+                
+                freqs.forEach((freq, index) => {
+                    const osc = audioCtx.createOscillator();
+                    const oscGain = audioCtx.createGain();
+                    
+                    // Mix sine wave (pure warmth) with low triangle notes for acoustic chest resonance
+                    osc.type = index === 0 ? 'triangle' : 'sine';
+                    // Introduce extremely tiny detune values (microtonal beats) to sound organic and alive
+                    osc.frequency.setValueAtTime(freq + (Math.random() * 0.4 - 0.2), now);
+                    
+                    // Slow volume fading parameters
+                    oscGain.gain.setValueAtTime(0, now);
+                    oscGain.gain.linearRampToValueAtTime(0.03 + (Math.random() * 0.02), now + 2.5);
+
+                    osc.connect(oscGain);
+                    oscGain.connect(masterVolumeNode);
+                    
+                    osc.start(now);
+                    
+                    droneOscillators.push(osc);
+                    droneGains.push(oscGain);
+                });
+
+                // Procedurally swell and dip notes like an evolving atmospheric pad
+                soundscapeIntervalId = setInterval(() => {
+                    if (!audioCtx) return;
+                    const futureTime = audioCtx.currentTime + 3;
+                    droneGains.forEach(gainNode => {
+                        const randomVol = 0.01 + (Math.random() * 0.05);
+                        gainNode.gain.linearRampToValueAtTime(randomVol, futureTime);
+                    });
+                }, 4000);
+
+            } else if (activeSoundscape === 'rain') {
+                // SOFT RAIN: Generative white-noise buffer through lowpass filters with random tiny droplet pops
+                const bufferSize = 3 * audioCtx.sampleRate;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                noiseSourceNode = audioCtx.createBufferSource();
+                noiseSourceNode.buffer = noiseBuffer;
+                noiseSourceNode.loop = true;
+
+                // Deep cozy filter to simulate soft attic rain
+                noiseFilterNode = audioCtx.createBiquadFilter();
+                noiseFilterNode.type = 'lowpass';
+                noiseFilterNode.frequency.setValueAtTime(320, now);
+
+                const rainGain = audioCtx.createGain();
+                rainGain.gain.setValueAtTime(0.45, now);
+
+                noiseSourceNode.connect(noiseFilterNode);
+                noiseFilterNode.connect(rainGain);
+                rainGain.connect(masterVolumeNode);
+                
+                noiseSourceNode.start(now);
+
+                // Generate tiny droplets procedurally via high-freq blips
+                soundscapeIntervalId = setInterval(() => {
+                    if (!audioCtx || !isPlayingSoundscape) return;
+                    const t = audioCtx.currentTime;
+                    // Create high-pitch cozy drop click
+                    const drop = audioCtx.createOscillator();
+                    const dropGain = audioCtx.createGain();
+                    drop.type = 'sine';
+                    drop.frequency.setValueAtTime(1800 + Math.random() * 400, t);
+                    
+                    dropGain.gain.setValueAtTime(0, t);
+                    dropGain.gain.linearRampToValueAtTime(0.002 + Math.random() * 0.004, t + 0.005);
+                    dropGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+                    
+                    drop.connect(dropGain);
+                    dropGain.connect(masterVolumeNode);
+                    drop.start(t);
+                    drop.stop(t + 0.08);
+                }, 350);
+
+            } else if (activeSoundscape === 'waves') {
+                // OCEAN WAVES: Sweep low-pass white noise recursively inside low rates
+                const bufferSize = 4 * audioCtx.sampleRate;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                noiseSourceNode = audioCtx.createBufferSource();
+                noiseSourceNode.buffer = noiseBuffer;
+                noiseSourceNode.loop = true;
+
+                noiseFilterNode = audioCtx.createBiquadFilter();
+                noiseFilterNode.type = 'bandpass';
+                noiseFilterNode.frequency.setValueAtTime(250, now);
+                noiseFilterNode.Q.setValueAtTime(0.7, now);
+
+                const waveGain = audioCtx.createGain();
+                waveGain.gain.setValueAtTime(0.08, now);
+
+                noiseSourceNode.connect(noiseFilterNode);
+                noiseFilterNode.connect(waveGain);
+                waveGain.connect(masterVolumeNode);
+                
+                noiseSourceNode.start(now);
+
+                // Modulate frequency & gain sweeps (mimic wave cycles: swell and draw)
+                let timeVal = 0;
+                soundscapeIntervalId = setInterval(() => {
+                    if (!audioCtx || !isPlayingSoundscape) return;
+                    const t = audioCtx.currentTime;
+                    timeVal += 0.1;
+                    
+                    // Wave math: sine patterns with frequency peaks between 180Hz & 450Hz
+                    const sweepFreq = 280 + Math.sin(timeVal * 0.3) * 150;
+                    const sweepGain = 0.04 + ((Math.sin(timeVal * 0.3) + 1) / 2) * 0.12;
+                    
+                    if (noiseFilterNode) {
+                        noiseFilterNode.frequency.linearRampToValueAtTime(sweepFreq, t + 0.1);
+                    }
+                    waveGain.gain.linearRampToValueAtTime(sweepGain, t + 0.1);
+                }, 100);
+
+            } else if (activeSoundscape === 'campfire') {
+                // CAMPFIRE: Heavy deep low noise base with cracking fireplace sparks
+                const bufferSize = 2.5 * audioCtx.sampleRate;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                noiseSourceNode = audioCtx.createBufferSource();
+                noiseSourceNode.buffer = noiseBuffer;
+                noiseSourceNode.loop = true;
+
+                noiseFilterNode = audioCtx.createBiquadFilter();
+                noiseFilterNode.type = 'lowpass';
+                noiseFilterNode.frequency.setValueAtTime(160, now); // very muffled red rumble
+
+                const rumGain = audioCtx.createGain();
+                rumGain.gain.setValueAtTime(0.25, now);
+
+                noiseSourceNode.connect(noiseFilterNode);
+                noiseFilterNode.connect(rumGain);
+                rumGain.connect(masterVolumeNode);
+                
+                noiseSourceNode.start(now);
+
+                // Generates snappy pop cracks at random microintervals
+                soundscapeIntervalId = setInterval(() => {
+                    if (!audioCtx || !isPlayingSoundscape) return;
+                    // Trigger spark crackle
+                    const t = audioCtx.currentTime;
+                    const crackNode = audioCtx.createOscillator();
+                    const crackGain = audioCtx.createGain();
+                    
+                    crackNode.type = 'triangle';
+                    crackNode.frequency.setValueAtTime(120 + Math.random() * 500, t);
+                    
+                    crackGain.gain.setValueAtTime(0, t);
+                    crackGain.gain.linearRampToValueAtTime(0.015 + Math.random() * 0.03, t + 0.001);
+                    crackGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.01); // super quick pop
+                    
+                    crackNode.connect(crackGain);
+                    crackGain.connect(masterVolumeNode);
+                    
+                    crackNode.start(t);
+                    crackNode.stop(t + 0.025);
+                }, 140); // fire crackling speed
+            }
+        }
+
+        // Alarm Synthesizer Trigger Sound (Soothing Bell/Marimba)
+        function testAlertSound() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                } else if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const now = audioCtx.currentTime;
+                
+                // A-Major soft marimba chime
+                playPluckNote(659.25, now, 0.6);       // E5
+                playPluckNote(880.00, now + 0.12, 0.8); // A5
+                playPluckNote(1109.73, now + 0.24, 1.0); // C#6
+                
+                showToast(currentLanguage === 'ar' ? 'تم تشغيل صوت التنبيه بنجاح 🎵' : 'Alert sound played successfully 🎵', 'info');
+            } catch (e) {
+                console.error('Audio Context play failed', e);
+            }
+        }
+
+        function playPluckNote(freq, startTime, duration) {
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+            
+            // Low-pass filter cuts harsh high-end frequencies
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1400, startTime);
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.22, startTime + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // TASK CRUD ACTIONS
+
+        function saveTasksToStorage() {
+            localStorage.setItem('planner_tasks', JSON.stringify(tasks));
+        }
+
+        function handleAddTask(e) {
+            e.preventDefault();
+            
+            const titleInput = document.getElementById('task-title');
+            const timeInput = document.getElementById('task-time');
+            const descInput = document.getElementById('task-desc');
+
+            const title = titleInput.value.trim();
+            const time = timeInput.value;
+            const desc = descInput.value.trim();
+
+            if (!title || !time) return;
+
+            const newTask = {
+                id: 'task_' + Date.now(),
+                title: title,
+                description: desc,
+                time: time,
+                date: selectedDate,
+                completed: false,
+                notifiedAt: null
+            };
+
+            tasks.push(newTask);
+            sortTasks();
+            saveTasksToStorage();
+            
+            titleInput.value = '';
+            descInput.value = '';
+            
+            showToast(translations[currentLanguage].toastAdded, 'success');
+            renderTasks();
+        }
+
+        function sortTasks() {
+            tasks.sort((a, b) => {
+                // Sort by date first, then by time
+                const dateA = a.date || '2000-01-01';
+                const dateB = b.date || '2000-01-01';
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return a.time.localeCompare(b.time);
+            });
+        }
+
+        function toggleTaskStatus(taskId) {
+            tasks = tasks.map(t => {
+                if (t.id === taskId) {
+                    return { ...t, completed: !t.completed };
+                }
+                return t;
+            });
+
+            saveTasksToStorage();
+            showToast(translations[currentLanguage].toastStatusChanged, 'info');
+            renderTasks();
+        }
+
+        function openEditModal(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('edit-task-id').value = task.id;
+            document.getElementById('edit-task-title').value = task.title;
+            document.getElementById('edit-task-time').value = task.time;
+            document.getElementById('edit-task-desc').value = task.description || '';
+
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.bg-white').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.bg-white').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function handleUpdateTask(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('edit-task-id').value;
+            const title = document.getElementById('edit-task-title').value.trim();
+            const time = document.getElementById('edit-task-time').value;
+            const desc = document.getElementById('edit-task-desc').value.trim();
+
+            if (!title || !time) return;
+
+            tasks = tasks.map(t => {
+                if (t.id === id) {
+                    const notifiedAt = t.time !== time ? null : t.notifiedAt;
+                    return { ...t, title, time, description: desc, notifiedAt };
+                }
+                return t;
+            });
+
+            sortTasks();
+            saveTasksToStorage();
+            closeEditModal();
+            showToast(translations[currentLanguage].toastUpdated, 'success');
+            renderTasks();
+        }
+
+        function handleDeleteTask(taskId) {
+            const dict = translations[currentLanguage];
+            if (confirm(dict.deleteConfirm)) {
+                tasks = tasks.filter(t => t.id !== taskId);
+                saveTasksToStorage();
+                showToast(dict.toastDeleted, 'info');
+                renderTasks();
+            }
+        }
+
+        function handleClearDay() {
+            const dayTasks = tasks.filter(t => {
+                const taskDate = t.date || new Date().toISOString().split('T')[0];
+                return taskDate === selectedDate;
+            });
+            if (dayTasks.length === 0) return;
+            
+            const dict = translations[currentLanguage];
+            if (confirm(dict.dateClearDayConfirm)) {
+                tasks = tasks.filter(t => {
+                    const taskDate = t.date || new Date().toISOString().split('T')[0];
+                    return taskDate !== selectedDate;
+                });
+                saveTasksToStorage();
+                showToast(dict.toastCleared, 'info');
+                renderTasks();
+            }
+        }
+
+        function handleClearAll() {
+            if (tasks.length === 0) return;
+            
+            const dict = translations[currentLanguage];
+            if (confirm(dict.clearAllConfirm)) {
+                tasks = [];
+                saveTasksToStorage();
+                showToast(dict.toastCleared, 'info');
+                renderTasks();
+            }
+        }
+
+        // ===== DATE NAVIGATION FUNCTIONS =====
+
+        function updateDateDisplay() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dict = translations[currentLanguage];
+            
+            // Format selected date for display
+            const [sy, sm, sd] = selectedDate.split('-');
+            const dateObj = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd));
+            const langCode = currentLanguage === 'ar' ? 'ar-EG' : 'en-US';
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            
+            let displayText = dateObj.toLocaleDateString(langCode, options);
+            
+            // If today, prefix with "Today - "
+            if (selectedDate === todayStr) {
+                displayText = dict.today + ' • ' + displayText;
+            }
+            
+            document.getElementById('selected-date-display').textContent = displayText;
+            document.getElementById('date-picker').value = selectedDate;
+            
+            // Toggle the "Today" button visibility
+            const btnToday = document.getElementById('btn-today');
+            if (selectedDate === todayStr) {
+                btnToday.classList.add('hidden');
+            } else {
+                btnToday.classList.remove('hidden');
+                btnToday.textContent = dict.dateToday;
+            }
+            
+            // Update the clear-day button label
+            const clearBtn = document.getElementById('btn-clear-day');
+            if (clearBtn) {
+                clearBtn.childNodes[clearBtn.childNodes.length - 1].textContent = 
+                    currentLanguage === 'ar' ? 'مسح اليوم' : 'Clear day';
+            }
+        }
+
+        function navigateDay(delta) {
+            const [sy, sm, sd] = selectedDate.split('-');
+            const current = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd));
+            current.setDate(current.getDate() + delta);
+            
+            const y = current.getFullYear();
+            const m = String(current.getMonth() + 1).padStart(2, '0');
+            const d = String(current.getDate()).padStart(2, '0');
+            
+            selectedDate = `${y}-${m}-${d}`;
+            localStorage.setItem('planner_selected_date', selectedDate);
+            updateDateDisplay();
+            renderTasks();
+        }
+
+        function goToToday() {
+            selectedDate = new Date().toISOString().split('T')[0];
+            localStorage.setItem('planner_selected_date', selectedDate);
+            updateDateDisplay();
+            renderTasks();
+        }
+
+        function onDatePickerChange(dateValue) {
+            if (!dateValue) return;
+            selectedDate = dateValue;
+            localStorage.setItem('planner_selected_date', selectedDate);
+            updateDateDisplay();
+            renderTasks();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = "filter-btn flex-grow sm:flex-none text-xs font-semibold py-2 px-4 rounded-lg text-[#878276] hover:text-[#3E3B35] hover:bg-[#FAF7F2] cursor-pointer transition-all duration-200";
+            });
+
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            if (activeBtn) {
+                activeBtn.className = "filter-btn flex-grow sm:flex-none text-xs font-bold py-2 px-4 rounded-lg cursor-pointer transition-all duration-200 bg-[#EFEFE9] text-[#4A634F]";
+            }
+
+            renderTasks();
+        }
+
+        function handleSearch(val) {
+            currentSearch = val.toLowerCase().trim();
+            renderTasks();
+        }
+
+        function formatTimeDisplay(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const hr = parseInt(hours);
+            const period = hr >= 12 ? translations[currentLanguage].pm : translations[currentLanguage].am;
+            const displayHr = hr % 12 === 0 ? 12 : hr % 12;
+            
+            return `${displayHr}:${minutes} ${period}`;
+        }
+
+        // Live countdown text generator per task
+        function getCountdownText(task) {
+            if (task.completed) return '';
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            const taskDate = task.date || todayStr;
+            const dict = translations[currentLanguage];
+            
+            // If task is not for today, show relative day info
+            if (taskDate !== todayStr) {
+                const [ty, tm, td] = taskDate.split('-');
+                const taskDateObj = new Date(parseInt(ty), parseInt(tm) - 1, parseInt(td));
+                const diffDays = Math.round((taskDateObj - new Date(todayStr + 'T00:00:00')) / 86400000);
+                
+                if (diffDays === 1) return currentLanguage === 'ar' ? 'غداً' : 'Tomorrow';
+                if (diffDays === -1) return currentLanguage === 'ar' ? 'أمس' : 'Yesterday';
+                if (diffDays < 0) return currentLanguage === 'ar' ? `منذ ${Math.abs(diffDays)} أيام` : `${Math.abs(diffDays)} days ago`;
+                if (diffDays > 0) return currentLanguage === 'ar' ? `بعد ${diffDays} أيام` : `in ${diffDays} days`;
+                return taskDate;
+            }
+            
+            const [th, tm2] = task.time.split(':');
+            const target = new Date();
+            target.setHours(parseInt(th), parseInt(tm2), 0, 0);
+            
+            const diffMs = target - now;
+            const diffMins = Math.round(diffMs / 60000);
+
+            if (Math.abs(diffMins) < 1) return dict.countdownNow;
+            
+            if (diffMins < 0) {
+                // Past today
+                const ago = Math.abs(diffMins);
+                if (ago < 60) {
+                    return ago === 1 ? dict.countdownMinAgo : dict.countdownMinsAgo.replace('{n}', ago);
+                }
+                const hours = Math.floor(ago / 60);
+                return hours === 1 ? dict.countdownHourAgo : dict.countdownHoursAgo.replace('{n}', hours);
+            } else {
+                // Future today
+                if (diffMins < 60) {
+                    return diffMins === 1 ? dict.countdownInMin : dict.countdownInMins.replace('{n}', diffMins);
+                }
+                const hours = Math.floor(diffMins / 60);
+                return hours === 1 ? dict.countdownInHour : dict.countdownInHours.replace('{n}', hours);
+            }
+        }
+
+        // DOM Renderer for Task Deck
+        function renderTasks() {
+            const container = document.getElementById('tasks-list');
+            const dict = translations[currentLanguage];
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            // First filter by selected date, then by tab & search
+            let filteredTasks = tasks.filter(t => {
+                // Filter by selected date (always)
+                const taskDate = t.date || new Date().toISOString().split('T')[0];
+                if (taskDate !== selectedDate) return false;
+                
+                if (currentFilter === 'pending' && t.completed) return false;
+                if (currentFilter === 'completed' && !t.completed) return false;
+                
+                if (currentSearch) {
+                    const titleMatch = t.title.toLowerCase().includes(currentSearch);
+                    const descMatch = t.description && t.description.toLowerCase().includes(currentSearch);
+                    return titleMatch || descMatch;
+                }
+                return true;
+            });
+
+            // Day-specific counts for header badges
+            const dayTasks = tasks.filter(t => {
+                const taskDate = t.date || new Date().toISOString().split('T')[0];
+                return taskDate === selectedDate;
+            });
+
+            // Sync badge statistics (for the selected day only)
+            const totalCount = dayTasks.length;
+            const pendingCount = dayTasks.filter(t => !t.completed).length;
+            const completedCount = dayTasks.filter(t => t.completed).length;
+
+            document.getElementById('count-all').textContent = totalCount;
+            document.getElementById('count-pending').textContent = pendingCount;
+            document.getElementById('count-completed').textContent = completedCount;
+
+            // Update day nav count badge
+            document.getElementById('count-day-total').textContent = totalCount;
+
+            if (filteredTasks.length === 0) {
+                let emptyTitle = dict.emptyStateTitle;
+                let emptyDesc = dict.emptyStateDesc;
+
+                if (currentSearch) {
+                    emptyTitle = dict.noResultsTitle;
+                    emptyDesc = dict.noResultsDesc;
+                }
+
+                container.innerHTML = `
+                    <div class="bg-white border border-[#EBE6DC] rounded-3xl p-8 text-center my-auto flex flex-col items-center justify-center space-y-4 min-h-[200px] cozy-shadow">
+                        <div class="w-16 h-16 bg-[#FAF7F2] border border-[#EBE6DC] rounded-full flex items-center justify-center text-[#6B8C70]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="font-extrabold text-[#3E3B35] text-base">${emptyTitle}</h4>
+                            <p class="text-xs text-[#878276] mt-1.5 max-w-xs mx-auto leading-relaxed">${emptyDesc}</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            filteredTasks.forEach(task => {
+                const isCompleted = task.completed;
+                const timeDisplay = formatTimeDisplay(task.time);
+                
+                const item = document.createElement('div');
+                item.className = `group bg-white border ${isCompleted ? 'border-[#EBE6DC] opacity-70 bg-[#FAF7F2]/30' : 'border-[#EBE6DC] hover:border-[#6B8C70] hover:shadow-xs'} rounded-2xl p-4.5 flex items-start gap-4 transition-all duration-300 relative overflow-hidden`;
+                
+                // Soft Vertical Border Decor
+                if (!isCompleted) {
+                    item.innerHTML += `<div class="absolute top-0 bottom-0 start-0 w-1 bg-[#6B8C70]"></div>`;
+                } else {
+                    item.innerHTML += `<div class="absolute top-0 bottom-0 start-0 w-1 bg-[#DCD6CB]"></div>`;
+                }
+
+                item.innerHTML += `
+                    <!-- Checkbox button -->
+                    <button onclick="toggleTaskStatus('${task.id}')" class="shrink-0 w-6 h-6 rounded-lg border-2 ${isCompleted ? 'bg-[#6B8C70] border-[#6B8C70] text-white' : 'border-[#DCD6CB] text-transparent hover:border-[#6B8C70] bg-white'} flex items-center justify-center transition-colors duration-200 cursor-pointer mt-0.5">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+
+                    <!-- Content details -->
+                    <div class="flex-grow min-w-0 space-y-1">
+                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-md ${isCompleted ? 'bg-[#EFEFE9] text-[#878276]' : 'bg-[#EFEFE9] text-[#4A634F]'}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>${timeDisplay}</span>
+                            </span>
+                            
+                            <h4 class="text-sm font-bold text-[#3E3B35] truncate ${isCompleted ? 'line-through text-[#878276]' : ''}">
+                                ${task.title}
+                            </h4>
+                        </div>
+
+                        <!-- Live Countdown Timer -->
+                        <div class="countdown-row flex items-center gap-1.5" data-task-id="${task.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 ${isCompleted ? 'text-[#C4BFA9]' : 'text-[#6B8C70] animate-pulse'}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="countdown-text text-xs font-semibold ${isCompleted ? 'text-[#C4BFA9]' : 'text-[#6B8C70]'}">${getCountdownText(task)}</span>
+                        </div>
+
+                        ${task.description ? `
+                            <p class="text-xs text-[#878276] break-words ${isCompleted ? 'line-through text-[#C4BFA9]' : ''}">
+                                ${task.description}
+                            </p>
+                        ` : ''}
+                    </div>
+
+                    <!-- Action deck tools -->
+                    <div class="shrink-0 flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <!-- Edit button -->
+                        <button onclick="openEditModal('${task.id}')" class="p-1.5 rounded-lg bg-[#FAF7F2] border border-[#EBE6DC] hover:border-[#DCD6CB] text-[#878276] hover:text-[#3E3B35] transition duration-150 cursor-pointer" title="${dict.editTask}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </button>
+                        
+                        <!-- Delete button -->
+                        <button onclick="handleDeleteTask('${task.id}')" class="p-1.5 rounded-lg bg-[#FAF7F2] border border-[#EBE6DC] hover:border-rose-200 hover:bg-rose-50 text-rose-400 hover:text-rose-700 transition duration-150 cursor-pointer" title="${dict.clearAll}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Live Clock Display & Alert Verification ticker
+        function updateClockAndScheduleCheck() {
+            const now = new Date();
+            
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            
+            const currentTimeString = `${hours}:${minutes}:${seconds}`;
+            const currentHM = `${hours}:${minutes}`;
+            
+            document.getElementById('current-time-display').textContent = currentTimeString;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const langCode = currentLanguage === 'ar' ? 'ar-EG' : 'en-US';
+            document.getElementById('current-date-display').textContent = now.toLocaleDateString(langCode, options);
+
+            const todayString = now.toISOString().split('T')[0];
+            
+            tasks.forEach(task => {
+                // Only trigger alarms for tasks scheduled today
+                const taskDate = task.date || todayString;
+                if (taskDate !== todayString) return;
+                
+                if (!task.completed && task.time === currentHM && task.notifiedAt !== todayString) {
+                    task.notifiedAt = todayString;
+                    saveTasksToStorage();
+                    triggerTaskAlarm(task);
+                }
+            });
+
+            // Refresh all live countdown timers every second
+            document.querySelectorAll('.countdown-row').forEach(row => {
+                const taskId = row.getAttribute('data-task-id');
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+                const textSpan = row.querySelector('.countdown-text');
+                if (textSpan) {
+                    const newText = getCountdownText(task);
+                    if (textSpan.textContent !== newText) {
+                        textSpan.textContent = newText;
+                    }
+                }
+                // Toggle completed opacity on countdown row too
+                if (task.completed) {
+                    row.classList.add('opacity-50');
+                    row.querySelector('svg').classList.add('text-[#C4BFA9]');
+                    row.querySelector('svg').classList.remove('text-[#6B8C70]', 'animate-pulse');
+                    row.querySelector('.countdown-text').classList.add('text-[#C4BFA9]');
+                    row.querySelector('.countdown-text').classList.remove('text-[#6B8C70]');
+                }
+            });
+        }
+
+        // Alarm Dispatch Orchestration
+        function triggerTaskAlarm(task) {
+            // 1. Play soft chime melody (A-Major chord)
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const now = audioCtx.currentTime;
+                playPluckNote(659.25, now, 0.8);       // E5
+                playPluckNote(880.00, now + 0.15, 0.9); // A5
+                playPluckNote(1109.73, now + 0.30, 1.2); // C#6
+            } catch (e) {
+                console.error("Audio playback blocked or unsupported", e);
+            }
+
+            // 2. Send OS Native Push Notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const dict = translations[currentLanguage];
+                const notificationTitle = dict.alertTitle;
+                const notificationBody = dict.alertBody.replace('{title}', task.title);
+                
+                try {
+                    const notification = new Notification(notificationTitle, {
+                        body: notificationBody,
+                        icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236B8C70"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>',
+                        tag: task.id,
+                        requireInteraction: true
+                    });
+                    
+                    notification.onclick = () => {
+                        window.focus();
+                        notification.close();
+                        openAlarmOverlay(task);
+                    };
+                } catch (e) {
+                    console.error("Failed to trigger native notification", e);
+                }
+            }
+
+            // 3. Display interactive in-app visual overlay
+            openAlarmOverlay(task);
+        }
+
+        // Modal Overlay triggers
+        function openAlarmOverlay(task) {
+            const modal = document.getElementById('alarm-modal');
+            const titleEl = document.getElementById('alarm-task-title');
+            const descEl = document.getElementById('alarm-task-desc');
+            const timeBadgeEl = document.getElementById('alarm-time-badge');
+            
+            const btnComplete = document.getElementById('btn-alarm-complete');
+            const btnDismiss = document.getElementById('btn-alarm-dismiss');
+
+            const dict = translations[currentLanguage];
+
+            titleEl.textContent = task.title;
+            descEl.textContent = task.description || '';
+            timeBadgeEl.textContent = formatTimeDisplay(task.time);
+            
+            btnComplete.querySelector('span').textContent = dict.markDone;
+            btnDismiss.textContent = dict.dismiss;
+
+            btnComplete.onclick = () => {
+                toggleTaskStatus(task.id);
+                closeAlarmOverlay();
+            };
+            btnDismiss.onclick = () => {
+                closeAlarmOverlay();
+            };
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.bg-white').classList.remove('scale-90');
+            }, 10);
+        }
+
+        function closeAlarmOverlay() {
+            const modal = document.getElementById('alarm-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.bg-white').classList.add('scale-90');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // ============================================================
+        // FIREBASE CONFIG + AUTH + SYNC
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4qz-usCzgB5pLeSw-LYbTLJUefykXxQg",
+            authDomain: "ibrahimachref-1f1e2.firebaseapp.com",
+            projectId: "ibrahimachref-1f1e2",
+            storageBucket: "ibrahimachref-1f1e2.firebasestorage.app",
+            messagingSenderId: "369029880537",
+            appId: "1:369029880537:web:03dcceca40fc8d15ccbcc8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentUser = null;
+        let unsubscribeListener = null;
+        let appInitialized = false;
+
+        // ---- LOGIN ----
+        window.addEventListener("DOMContentLoaded", function() {
+            const saved = localStorage.getItem("planner_username");
+            if (saved) {
+                currentUser = saved;
+                document.getElementById("login-overlay").style.display = "none";
+                initApp();
+                if (saved === "ofadma") {
+                    openAdmin();
+                } else {
+                    initFirebaseSync();
+                    showUserBadge(saved);
+                }
+            } else {
+                document.getElementById("login-overlay").style.display = "flex";
+            }
+            document.getElementById("login-name-input").addEventListener("keydown", function(e) {
+                if (e.key === "Enter") handleLogin();
+            });
+        });
+
+        function handleLogin() {
+            const name = document.getElementById("login-name-input").value.trim();
+            if (!name) { document.getElementById("login-error").style.display = "block"; return; }
+            document.getElementById("login-error").style.display = "none";
+            currentUser = name;
+            localStorage.setItem("planner_username", name);
+            document.getElementById("login-overlay").style.display = "none";
+            initApp();
+            if (name === "ofadma") {
+                openAdmin();
+            } else {
+                initFirebaseSync();
+                showUserBadge(name);
+            }
+        }
+
+        function showUserBadge(name) {
+            const existing = document.getElementById("user-badge");
+            if (existing) return;
+            const badge = document.createElement("div");
+            badge.id = "user-badge";
+            badge.style.cssText = "position:fixed;bottom:1rem;left:1rem;background:#fff;border:1px solid #EBE6DC;border-radius:12px;padding:0.5rem 0.85rem;font-family:var(--font-arabic);font-size:0.8rem;color:#6B8C70;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;z-index:100;cursor:pointer;" ;
+            badge.innerHTML = "🌿 " + name + " &nbsp;<span style=\"font-size:0.7rem;color:#C5BDAF;\">(تغيير)</span>";
+            badge.onclick = function() { localStorage.removeItem("planner_username"); location.reload(); };
+            document.body.appendChild(badge);
+        }
+
+        // ---- FIREBASE SYNC ----
+        function initFirebaseSync() {
+            if (!currentUser || currentUser === "ofadma") return;
+            const ref = db.collection("users").doc(currentUser).collection("tasks");
+            // Load once from Firebase on init, overwrite local
+            ref.get().then(function(snap) {
+                if (!snap.empty) {
+                    tasks = snap.docs.map(function(d) { return d.data(); });
+                    sortTasks();
+                    renderTasks();
+                }
+            });
+        }
+
+        const _origSave = saveTasksToStorage;
+        function saveTasksToStorage() {
+            _origSave();
+            if (!currentUser || currentUser === "ofadma") return;
+            const ref = db.collection("users").doc(currentUser).collection("tasks");
+            const batch = db.batch();
+            // Delete all then re-write (simple approach for small task lists)
+            ref.get().then(function(snap) {
+                snap.forEach(function(d) { batch.delete(d.ref); });
+                tasks.forEach(function(t) { batch.set(ref.doc(t.id), t); });
+                batch.commit().catch(function(e) { console.error("Firebase sync error", e); });
+            });
+        }
+
+        // ---- ADMIN PANEL ----
+        function openAdmin() {
+            document.getElementById("admin-panel").classList.remove("hidden");
+            loadAdminData();
+        }
+        function closeAdmin() {
+            document.getElementById("admin-panel").classList.add("hidden");
+        }
+
+        function loadAdminData() {
+            const content = document.getElementById("admin-content");
+            content.innerHTML = "<p style=\"color:#878276;text-align:center;padding:2rem;font-family:var(--font-arabic);\">جارٍ تحميل البيانات...</p>";
+            db.collection("users").get().then(function(usersSnap) {
+                if (usersSnap.empty) {
+                    content.innerHTML = "<p style=\"color:#878276;text-align:center;padding:2rem;font-family:var(--font-arabic);\">لا يوجد مستخدمون بعد</p>";
+                    return;
+                }
+                let html = "";
+                let promises = [];
+                usersSnap.forEach(function(userDoc) {
+                    const uname = userDoc.id;
+                    const p = db.collection("users").doc(uname).collection("tasks").get().then(function(tasksSnap) {
+                        const userTasks = tasksSnap.docs.map(function(d){return d.data();});
+                        const done = userTasks.filter(function(t){return t.completed;}).length;
+                        const pending = userTasks.length - done;
+                        let rows = userTasks.map(function(t) {
+                            return "<tr style=\"border-bottom:1px solid #EBE6DC;\">" +
+                                "<td style=\"padding:8px 12px;font-size:0.85rem;color:#3E3B35;\">" + (t.title||"") + "</td>" +
+                                "<td style=\"padding:8px 12px;font-size:0.85rem;color:#878276;\">" + (t.time||"") + "</td>" +
+                                "<td style=\"padding:8px 12px;font-size:0.85rem;color:#878276;\">" + (t.date||"") + "</td>" +
+                                "<td style=\"padding:8px 12px;\"><span style=\"background:" + (t.completed?"#E2EBDD":"#FFF3CD") + ";color:" + (t.completed?"#4A634F":"#856404") + ";padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;\">" + (t.completed?"✓ منجزة":"⏳ معلقة") + "</span></td>" +
+                            "</tr>";
+                        }).join("");
+                        return "<div style=\"background:#fff;border-radius:16px;padding:1.25rem;margin-bottom:1.25rem;box-shadow:0 4px 20px rgba(0,0,0,0.05);\">" +
+                            "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;\">" +
+                                "<h3 style=\"font-family:var(--font-arabic);font-size:1.1rem;font-weight:700;color:#3E3B35;\">👤 " + uname + "</h3>" +
+                                "<div style=\"display:flex;gap:8px;\">" +
+                                    "<span style=\"background:#E2EBDD;color:#4A634F;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;font-family:var(--font-arabic);\">✓ " + done + " منجزة</span>" +
+                                    "<span style=\"background:#FFF3CD;color:#856404;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;font-family:var(--font-arabic);\">⏳ " + pending + " معلقة</span>" +
+                                "</div>" +
+                            "</div>" +
+                            (userTasks.length ? "<table style=\"width:100%;border-collapse:collapse;font-family:var(--font-arabic);\">" +
+                                "<thead><tr style=\"background:#FAF7F2;\">" +
+                                    "<th style=\"padding:8px 12px;text-align:right;font-size:0.75rem;color:#878276;font-weight:600;\">المهمة</th>" +
+                                    "<th style=\"padding:8px 12px;text-align:right;font-size:0.75rem;color:#878276;font-weight:600;\">الوقت</th>" +
+                                    "<th style=\"padding:8px 12px;text-align:right;font-size:0.75rem;color:#878276;font-weight:600;\">التاريخ</th>" +
+                                    "<th style=\"padding:8px 12px;text-align:right;font-size:0.75rem;color:#878276;font-weight:600;\">الحالة</th>" +
+                                "</tr></thead>" +
+                                "<tbody>" + rows + "</tbody>" +
+                            "</table>" : "<p style=\"color:#C5BDAF;font-size:0.85rem;padding:0.5rem;font-family:var(--font-arabic);\">لا توجد مهام</p>") +
+                        "</div>";
+                    });
+                    promises.push(p);
+                });
+                Promise.all(promises).then(function(sections) {
+                    content.innerHTML = sections.join("");
+                });
+            }).catch(function(e) {
+                content.innerHTML = "<p style=\"color:#c0392b;text-align:center;padding:2rem;font-family:var(--font-arabic);\">خطأ في تحميل البيانات: " + e.message + "</p>";
+            });
+        }
+
+        // ---- DOWNLOAD CSV REPORT ----
+        function downloadReport() {
+            db.collection("users").get().then(function(usersSnap) {
+                let rows = [["الاسم","المهمة","الوقت","التاريخ","الحالة"]];
+                let promises = [];
+                usersSnap.forEach(function(userDoc) {
+                    const uname = userDoc.id;
+                    const p = db.collection("users").doc(uname).collection("tasks").get().then(function(tasksSnap) {
+                        tasksSnap.forEach(function(d) {
+                            const t = d.data();
+                            rows.push([uname, t.title||"", t.time||"", t.date||"", t.completed?"منجزة":"معلقة"]);
+                        });
+                    });
+                    promises.push(p);
+                });
+                Promise.all(promises).then(function() {
+                    const bom = "uFEFF";
+                    const csv = bom + rows.map(function(r){return r.map(function(c){return """+String(c).replace(/"/g,"\"\"")+""";}).join(",");}).join("
+");
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+                    a.download = "تقرير_المهام_" + new Date().toISOString().split("T")[0] + ".csv";
+                    a.click();
+                });
+            });
+        }
+    </script>
+</body>
+</html>
